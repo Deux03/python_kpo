@@ -22,8 +22,8 @@ class Game:
         self.end_time = None
         self.restart_button_rect = pygame.Rect(600, 500, 200, 50)
         self.start_button_rect = pygame.Rect(600, 350, 200, 50)
-        self.start_ticks = pygame.time.get_ticks()
         self.game_started = False
+        self.start_ticks = None
 
     def reset_game(self):
         self.last_speed_increase_time = pygame.time.get_ticks()
@@ -32,7 +32,10 @@ class Game:
         self.lives = 3
         self.game_over = False
         self.end_time = None
-        self.start_ticks = pygame.time.get_ticks()
+        self.game_started = False
+        self.fruits = []
+
+
 
     def display_timer(self, current_time, start_time, dest_x=10, dest_y=10, color=(255, 255, 255)):
         elapsed_time = (current_time - start_time) / 1000
@@ -142,6 +145,7 @@ class Game:
                     if self.start_button_rect.collidepoint(mouse_x, mouse_y):
                         if not self.game_started:
                             self.game_started = True
+                            self.start_ticks = pygame.time.get_ticks()
 
             pygame.draw.circle(self.screen, (255, 0, 0), (mouse_x, mouse_y), 5)
             pygame.display.flip()
