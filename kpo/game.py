@@ -22,8 +22,12 @@ class Game:
         self.end_time = None
         self.restart_button_rect = pygame.Rect(600, 500, 200, 50)
         self.start_button_rect = pygame.Rect(600, 350, 200, 50)
+        self.quit_button_rect = pygame.Rect(600, 600, 200, 50)
         self.game_started = False
         self.start_ticks = None
+        self.background_image = pygame.image.load('background/background.jpg').convert()
+        self.background_image = pygame.transform.scale(self.background_image, (1400, 800))
+        self.bomb_hit = False #TODO Bombák létrehozása a játékban, ha eltalálsz 1-et akk vesztettél
 
     def reset_game(self):
         self.last_speed_increase_time = pygame.time.get_ticks()
@@ -34,8 +38,6 @@ class Game:
         self.end_time = None
         self.game_started = False
         self.fruits = []
-
-
 
     def display_timer(self, current_time, start_time, dest_x=10, dest_y=10, color=(255, 255, 255)):
         elapsed_time = (current_time - start_time) / 1000
@@ -49,6 +51,10 @@ class Game:
     def display_lives(self):
         lives_text = self.font.render(f'Lives: {self.lives}', True, (255, 255, 255))
         self.screen.blit(lives_text, (10, 90))
+
+    def display_fps(self):
+        fps_text = self.font.render(f'FPS: {self.clock.get_fps():.0f}', True, (255,255,255))
+        self.screen.blit(fps_text, (10, 130))
 
     def display_u_lost(self):
         u_lost_text = self.font.render(f'YOU LOST!', True, (255, 0, 0))
@@ -73,6 +79,14 @@ class Game:
         pygame.draw.rect(self.screen, button_color, self.start_button_rect)
         button_text = self.font.render('Start Game', True, (255, 255, 255))
         text_rect = button_text.get_rect(center=self.start_button_rect.center)
+        self.screen.blit(button_text, text_rect)
+
+    def display_quit_game_button(self, mouse_x, mouse_y):
+        hover = self.quit_button_rect.collidepoint(mouse_x, mouse_y)
+        button_color = (0, 200, 0) if hover else (255, 0, 0)
+        pygame.draw.rect(self.screen, button_color, self.quit_button_rect)
+        button_text = self.font.render('Quit Game', True, (255, 255, 255))
+        text_rect = button_text.get_rect(center=self.quit_button_rect.center)
         self.screen.blit(button_text, text_rect)
 
     def speed_increaser(self, current_time):
@@ -112,7 +126,7 @@ class Game:
         pygame.mouse.set_visible(0)
 
         while True:
-            self.screen.fill((0, 0, 0))
+            self.screen.blit(self.background_image, (0, 0))
             current_ticks = pygame.time.get_ticks()
             mouse_x, mouse_y = pygame.mouse.get_pos()
 
@@ -129,19 +143,25 @@ class Game:
                     self.display_timer(current_ticks, self.start_ticks)
                     self.display_score()
                     self.display_lives()
+                    self.display_fps()
                     self.fruits_movement(mouse_x, mouse_y)
                     self.spawn_random_fruits()
                 else:
                     self.display_u_lost()
                     self.display_restart_button(mouse_x, mouse_y)
+                    self.display_quit_game_button(mouse_x, mouse_y)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.close_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if self.quit_button_rect.collidepoint(mouse_x, mouse_y):
+                        self.close_game()
+
                     if self.restart_button_rect.collidepoint(mouse_x, mouse_y):
                         if self.game_over:
                             self.reset_game()
+
                     if self.start_button_rect.collidepoint(mouse_x, mouse_y):
                         if not self.game_started:
                             self.game_started = True
