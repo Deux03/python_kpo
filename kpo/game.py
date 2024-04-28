@@ -18,6 +18,21 @@ class Game:
         self.font = pygame.font.Font('fonts/comic.ttf', 30)
         self.score = 0
         self.lives = 3
+        self.game_over = False
+        self.end_time = None
+        self.restart_button_rect = pygame.Rect(600, 500, 200, 50)
+        self.start_button_rect = pygame.Rect(600, 350, 200, 50)
+        self.start_ticks = pygame.time.get_ticks()
+        self.game_started = False
+
+    def reset_game(self):
+        self.last_speed_increase_time = pygame.time.get_ticks()
+        self.fruit_speed = -1
+        self.score = 0
+        self.lives = 3
+        self.game_over = False
+        self.end_time = None
+        self.start_ticks = pygame.time.get_ticks()
 
     def display_timer(self, current_time, start_time, dest_x=10, dest_y=10, color=(255, 255, 255)):
         elapsed_time = (current_time - start_time) / 1000
@@ -32,11 +47,30 @@ class Game:
         lives_text = self.font.render(f'Lives: {self.lives}', True, (255, 255, 255))
         self.screen.blit(lives_text, (10, 90))
 
-    def display_u_lost(self, current_time, start_time):
+    def display_u_lost(self):
         u_lost_text = self.font.render(f'YOU LOST!', True, (255, 0, 0))
         self.screen.blit(u_lost_text, (600, 300))
-        # TODO A timer megálljon!
-        self.display_timer(current_time, start_time, 600, 340, (255, 0, 0))
+        total_score = self.font.render(f'Total score: {self.score}', True, (255, 0, 0))
+        self.screen.blit(total_score, (600, 340))
+        timer_text = self.font.render(f'Time: {self.end_time:.2f}s', True, (255, 0, 0))
+        self.screen.blit(timer_text, (600, 380))
+
+    def display_restart_button(self, mouse_x, mouse_y):
+        hover = self.restart_button_rect.collidepoint(mouse_x, mouse_y)
+        button_color = (0, 200, 0) if hover else (255, 0, 0)
+
+        pygame.draw.rect(self.screen, button_color, self.restart_button_rect)
+        button_text = self.font.render('Restart Game', True, (255, 255, 255))
+        text_rect = button_text.get_rect(center=self.restart_button_rect.center)
+        self.screen.blit(button_text, text_rect)
+
+    def display_start_button(self, mouse_x, mouse_y):
+        hover = self.start_button_rect.collidepoint(mouse_x, mouse_y)
+        button_color = (0, 200, 0) if hover else (255, 0, 0)
+        pygame.draw.rect(self.screen, button_color, self.start_button_rect)
+        button_text = self.font.render('Start Game', True, (255, 255, 255))
+        text_rect = button_text.get_rect(center=self.start_button_rect.center)
+        self.screen.blit(button_text, text_rect)
 
     def speed_increaser(self, current_time):
         if current_time - self.last_speed_increase_time > self.speed_increase_interval:
@@ -72,7 +106,6 @@ class Game:
         sys.exit()
 
     def run_game(self):
-        start_ticks = pygame.time.get_ticks()
         pygame.mouse.set_visible(0)
 
         while True:
@@ -80,19 +113,35 @@ class Game:
             current_ticks = pygame.time.get_ticks()
             mouse_x, mouse_y = pygame.mouse.get_pos()
 
-            if self.lives == 0:
-                self.display_u_lost(current_ticks, start_ticks)
+            if not self.game_started:
+                self.display_start_button(mouse_x, mouse_y)
+
             else:
-                self.speed_increaser(current_ticks)
-                self.display_timer(current_ticks, start_ticks)
-                self.display_score()
-                self.display_lives()
-                self.fruits_movement(mouse_x, mouse_y)
-                self.spawn_random_fruits()
+                if self.lives == 0 and not self.game_over:
+                    self.game_over = True
+                    self.end_time = (current_ticks - self.start_ticks) / 1000
+
+                if not self.game_over:
+                    self.speed_increaser(current_ticks)
+                    self.display_timer(current_ticks, self.start_ticks)
+                    self.display_score()
+                    self.display_lives()
+                    self.fruits_movement(mouse_x, mouse_y)
+                    self.spawn_random_fruits()
+                else:
+                    self.display_u_lost()
+                    self.display_restart_button(mouse_x, mouse_y)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.close_game()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if self.restart_button_rect.collidepoint(mouse_x, mouse_y):
+                        if self.game_over:
+                            self.reset_game()
+                    if self.start_button_rect.collidepoint(mouse_x, mouse_y):
+                        if not self.game_started:
+                            self.game_started = True
 
             pygame.draw.circle(self.screen, (255, 0, 0), (mouse_x, mouse_y), 5)
             pygame.display.flip()
