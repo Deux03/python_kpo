@@ -29,24 +29,24 @@ class Game:
         }
         try:
             self.font = pygame.font.Font('fonts/comic.ttf', 30)
-        except IOError:
-            print("Error: The font file 'fonts/comic.ttf' was not found or could not be opened.")
-            sys.exit()
+        except FileNotFoundError:
+            print("Font file 'fonts/comic.ttf' not found, using default font.")
+            self.font = pygame.font.Font(None, 30)
         self.ig_background_image = self.load_and_scale_image('background/background.jpg', (1400, 800))
         self.start_bg_img = self.load_and_scale_image('background/WelcomeScreen.jpg', (1400, 800))
         self.background_img = self.start_bg_img
 
     def load_and_scale_image(self, filepath, size):
         """
-        Loads an image from filepath and scales it to the specified size.
-        Exits the program if the image cannot be loaded.
-        """
+           Loads an image from filepath and scales it to the specified size.
+           If loading fails, returns a simple black surface of the specified size.
+           """
         try:
             image = pygame.image.load(filepath).convert()
             return pygame.transform.scale(image, size)
-        except pygame.error as e:
-            print(f"Error loading image {filepath}: {e}")
-            sys.exit()
+        except FileNotFoundError:
+            print(f"Error loading image {filepath}, using a black background instead.")
+            return pygame.Surface(size)
 
     def reset_game(self):
         self.last_speed_increase_time = pygame.time.get_ticks()
@@ -58,6 +58,10 @@ class Game:
         self.game_started = False
         self.fruits = []
         self.background_img = self.start_bg_img
+
+    def display_pause(self):
+        pause_text = self.font.render(f'P - pause', True, (255, 255, 255))
+        self.screen.blit(pause_text, (1250, 10))
 
     def display_timer(self, current_time, start_time, dest_x=10, dest_y=10, color=(255, 255, 255)):
         elapsed_time = (current_time - start_time) / 1000
@@ -76,7 +80,7 @@ class Game:
         fps_text = self.font.render(f'FPS: {self.clock.get_fps():.0f}', True, (255, 255, 255))
         self.screen.blit(fps_text, (10, 130))
 
-    def display_u_lost(self):
+    def display_game_over(self):
         u_lost_text = self.font.render(f'YOU LOST!', True, (255, 0, 0))
         self.screen.blit(u_lost_text, (600, 300))
         total_score = self.font.render(f'Total score: {self.score}', True, (255, 0, 0))
@@ -136,7 +140,7 @@ class Game:
                 self.display_button(mouse_x, mouse_y, self.buttons_rects['settings_button_rect'], "SETTINGS")
                 self.display_button(mouse_x, mouse_y, self.buttons_rects['quit_button_rect'], "QUIT")
             else:
-                if self.lives == 0 and not self.game_over:
+                if self.lives <= 0 and not self.game_over:
                     self.game_over = True
                     self.end_time = (current_ticks - self.start_ticks) / 1000
 
@@ -146,10 +150,11 @@ class Game:
                     self.display_score()
                     self.display_lives()
                     self.display_fps()
+                    self.display_pause()
                     self.fruits_movement(mouse_x, mouse_y)
                     self.spawn_random_fruits()
                 else:
-                    self.display_u_lost()
+                    self.display_game_over()
                     self.display_button(mouse_x, mouse_y, self.buttons_rects['restart_button_rect'], "RESTART")
                     self.display_button(mouse_x, mouse_y, self.buttons_rects['quit_button_rect'], "QUIT")
 
@@ -173,12 +178,40 @@ class Game:
                             self.start_ticks = pygame.time.get_ticks()
                             self.background_img = self.ig_background_image
 
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_p and not self.game_over:
+                        self.pause_game()
+
             pygame.draw.circle(self.screen, (255, 0, 0), (mouse_x, mouse_y), 5)
             pygame.display.flip()
             self.clock.tick(60)
 
     def display_settings(self):
         pass
+
+    def pause_game(self):
+        paused = True
+        while paused:
+            self.screen.blit(self.background_img, (0, 0))
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            pause_text = self.font.render("Game paused, press 'P' to unpause", True, (255, 255, 255))
+            self.screen.blit(pause_text, (430, 300))
+            self.display_button(mouse_x, mouse_y, self.buttons_rects['quit_button_rect'], "QUIT")
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_p:
+                        paused = False
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if self.buttons_rects['quit_button_rect'].collidepoint(mouse_x, mouse_y):
+                        self.close_game()
+
+            pygame.draw.circle(self.screen, (255, 0, 0), (mouse_x, mouse_y), 5)
+            pygame.display.flip()
+            self.clock.tick(60)
 
 
 class Fruit:
