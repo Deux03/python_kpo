@@ -12,26 +12,41 @@ class Game:
         self.clock = pygame.time.Clock()
         self.fruits = []
         self.fruit_types = ['watermelon', 'apple', 'banana']
-        self.speed_increase_interval = 5000  # 5 másodpercenként növeljük a sebességet
+        self.speed_increase_interval = 5000
         self.last_speed_increase_time = pygame.time.get_ticks()
         self.fruit_speed = -1
-        self.font = pygame.font.Font('fonts/comic.ttf', 30)
         self.score = 0
         self.lives = 3
         self.game_over = False
         self.end_time = None
-        self.restart_button_rect = pygame.Rect(600, 500, 200, 50)
-        self.start_button_rect = pygame.Rect(600, 420, 200, 50)
-        self.settings_button_rect = pygame.Rect(600, 500, 200, 50)
-        self.quit_button_rect = pygame.Rect(600, 600, 200, 50)
         self.game_started = False
         self.start_ticks = None
-        self.ig_background_image = pygame.image.load('background/background.jpg').convert()
-        self.ig_background_image = pygame.transform.scale(self.ig_background_image, (1400, 800))
-        self.start_bg_img = pygame.image.load('background/WelcomeScreen.jpg').convert()
-        self.start_bg_img = pygame.transform.scale(self.start_bg_img, (1400, 800))
+        self.buttons_rects = {
+            'restart_button_rect': pygame.Rect(600, 500, 200, 50),
+            'start_button_rect': pygame.Rect(600, 420, 200, 50),
+            'settings_button_rect': pygame.Rect(600, 500, 200, 50),
+            'quit_button_rect': pygame.Rect(600, 600, 200, 50)
+        }
+        try:
+            self.font = pygame.font.Font('fonts/comic.ttf', 30)
+        except IOError:
+            print("Error: The font file 'fonts/comic.ttf' was not found or could not be opened.")
+            sys.exit()
+        self.ig_background_image = self.load_and_scale_image('background/background.jpg', (1400, 800))
+        self.start_bg_img = self.load_and_scale_image('background/WelcomeScreen.jpg', (1400, 800))
         self.background_img = self.start_bg_img
-        self.bomb_hit = False #TODO Bombák létrehozása a játékban, ha eltalálsz 1-et akk vesztettél
+
+    def load_and_scale_image(self, filepath, size):
+        """
+        Loads an image from filepath and scales it to the specified size.
+        Exits the program if the image cannot be loaded.
+        """
+        try:
+            image = pygame.image.load(filepath).convert()
+            return pygame.transform.scale(image, size)
+        except pygame.error as e:
+            print(f"Error loading image {filepath}: {e}")
+            sys.exit()
 
     def reset_game(self):
         self.last_speed_increase_time = pygame.time.get_ticks()
@@ -58,7 +73,7 @@ class Game:
         self.screen.blit(lives_text, (10, 90))
 
     def display_fps(self):
-        fps_text = self.font.render(f'FPS: {self.clock.get_fps():.0f}', True, (255,255,255))
+        fps_text = self.font.render(f'FPS: {self.clock.get_fps():.0f}', True, (255, 255, 255))
         self.screen.blit(fps_text, (10, 130))
 
     def display_u_lost(self):
@@ -69,37 +84,12 @@ class Game:
         timer_text = self.font.render(f'Time: {self.end_time:.2f}s', True, (255, 0, 0))
         self.screen.blit(timer_text, (600, 380))
 
-    def display_restart_button(self, mouse_x, mouse_y):
-        hover = self.restart_button_rect.collidepoint(mouse_x, mouse_y)
+    def display_button(self, mouse_x, mouse_y, btn_rect, text):
+        hover = btn_rect.collidepoint(mouse_x, mouse_y)
         button_color = (0, 200, 0) if hover else (255, 0, 0)
-
-        pygame.draw.rect(self.screen, button_color, self.restart_button_rect)
-        button_text = self.font.render('Restart Game', True, (255, 255, 255))
-        text_rect = button_text.get_rect(center=self.restart_button_rect.center)
-        self.screen.blit(button_text, text_rect)
-
-    def display_start_button(self, mouse_x, mouse_y):
-        hover = self.start_button_rect.collidepoint(mouse_x, mouse_y)
-        button_color = (0, 200, 0) if hover else (255, 0, 0)
-        pygame.draw.rect(self.screen, button_color, self.start_button_rect)
-        button_text = self.font.render('Start Game', True, (255, 255, 255))
-        text_rect = button_text.get_rect(center=self.start_button_rect.center)
-        self.screen.blit(button_text, text_rect)
-
-    def display_settings_button(self, mouse_x, mouse_y):
-        hover = self.settings_button_rect.collidepoint(mouse_x, mouse_y)
-        button_color = (0, 200, 0) if hover else (255, 0, 0)
-        pygame.draw.rect(self.screen, button_color, self.settings_button_rect)
-        button_text = self.font.render('Settings', True, (255, 255, 255))
-        text_rect = button_text.get_rect(center=self.settings_button_rect.center)
-        self.screen.blit(button_text, text_rect)
-
-    def display_quit_game_button(self, mouse_x, mouse_y):
-        hover = self.quit_button_rect.collidepoint(mouse_x, mouse_y)
-        button_color = (0, 200, 0) if hover else (255, 0, 0)
-        pygame.draw.rect(self.screen, button_color, self.quit_button_rect)
-        button_text = self.font.render('Quit Game', True, (255, 255, 255))
-        text_rect = button_text.get_rect(center=self.quit_button_rect.center)
+        pygame.draw.rect(self.screen, button_color, btn_rect)
+        button_text = self.font.render(text, True, (255, 255, 255))
+        text_rect = button_text.get_rect(center=btn_rect.center)
         self.screen.blit(button_text, text_rect)
 
     def speed_increaser(self, current_time):
@@ -112,10 +102,8 @@ class Game:
             fruit.y_pos += self.fruit_speed
             fruit.img_pos = [fruit.x_pos, fruit.y_pos]
 
-            # Gyümölcs befoglaló dobozának kiszámítása
             fruit_rect = pygame.Rect(fruit.x_pos, fruit.y_pos, 100, 100)
 
-            # Ellenőrizzük, hogy az egér a gyümölcs befoglaló dobozán belül van-e
             if fruit_rect.collidepoint(mouse_x, mouse_y):
                 self.fruits.remove(fruit)
                 self.score += 1
@@ -144,10 +132,9 @@ class Game:
             mouse_x, mouse_y = pygame.mouse.get_pos()
 
             if not self.game_started:
-                self.display_start_button(mouse_x, mouse_y)
-                self.display_settings_button(mouse_x, mouse_y)
-                self.display_quit_game_button(mouse_x, mouse_y)
-
+                self.display_button(mouse_x, mouse_y, self.buttons_rects['start_button_rect'], "START")
+                self.display_button(mouse_x, mouse_y, self.buttons_rects['settings_button_rect'], "SETTINGS")
+                self.display_button(mouse_x, mouse_y, self.buttons_rects['quit_button_rect'], "QUIT")
             else:
                 if self.lives == 0 and not self.game_over:
                     self.game_over = True
@@ -163,24 +150,24 @@ class Game:
                     self.spawn_random_fruits()
                 else:
                     self.display_u_lost()
-                    self.display_restart_button(mouse_x, mouse_y)
-                    self.display_quit_game_button(mouse_x, mouse_y)
+                    self.display_button(mouse_x, mouse_y, self.buttons_rects['restart_button_rect'], "RESTART")
+                    self.display_button(mouse_x, mouse_y, self.buttons_rects['quit_button_rect'], "QUIT")
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.close_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if self.settings_button_rect.collidepoint(mouse_x, mouse_y):
+                    if self.buttons_rects['settings_button_rect'].collidepoint(mouse_x, mouse_y):
                         self.display_settings()
 
-                    if self.quit_button_rect.collidepoint(mouse_x, mouse_y):
+                    if self.buttons_rects['quit_button_rect'].collidepoint(mouse_x, mouse_y):
                         self.close_game()
 
-                    if self.restart_button_rect.collidepoint(mouse_x, mouse_y):
+                    if self.buttons_rects['restart_button_rect'].collidepoint(mouse_x, mouse_y):
                         if self.game_over:
                             self.reset_game()
 
-                    if self.start_button_rect.collidepoint(mouse_x, mouse_y):
+                    if self.buttons_rects['start_button_rect'].collidepoint(mouse_x, mouse_y):
                         if not self.game_started:
                             self.game_started = True
                             self.start_ticks = pygame.time.get_ticks()
