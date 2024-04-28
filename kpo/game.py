@@ -21,12 +21,16 @@ class Game:
         self.game_over = False
         self.end_time = None
         self.restart_button_rect = pygame.Rect(600, 500, 200, 50)
-        self.start_button_rect = pygame.Rect(600, 350, 200, 50)
+        self.start_button_rect = pygame.Rect(600, 420, 200, 50)
+        self.settings_button_rect = pygame.Rect(600, 500, 200, 50)
         self.quit_button_rect = pygame.Rect(600, 600, 200, 50)
         self.game_started = False
         self.start_ticks = None
-        self.background_image = pygame.image.load('background/background.jpg').convert()
-        self.background_image = pygame.transform.scale(self.background_image, (1400, 800))
+        self.ig_background_image = pygame.image.load('background/background.jpg').convert()
+        self.ig_background_image = pygame.transform.scale(self.ig_background_image, (1400, 800))
+        self.start_bg_img = pygame.image.load('background/WelcomeScreen.jpg').convert()
+        self.start_bg_img = pygame.transform.scale(self.start_bg_img, (1400, 800))
+        self.background_img = self.start_bg_img
         self.bomb_hit = False #TODO Bombák létrehozása a játékban, ha eltalálsz 1-et akk vesztettél
 
     def reset_game(self):
@@ -38,6 +42,7 @@ class Game:
         self.end_time = None
         self.game_started = False
         self.fruits = []
+        self.background_img = self.start_bg_img
 
     def display_timer(self, current_time, start_time, dest_x=10, dest_y=10, color=(255, 255, 255)):
         elapsed_time = (current_time - start_time) / 1000
@@ -79,6 +84,14 @@ class Game:
         pygame.draw.rect(self.screen, button_color, self.start_button_rect)
         button_text = self.font.render('Start Game', True, (255, 255, 255))
         text_rect = button_text.get_rect(center=self.start_button_rect.center)
+        self.screen.blit(button_text, text_rect)
+
+    def display_settings_button(self, mouse_x, mouse_y):
+        hover = self.settings_button_rect.collidepoint(mouse_x, mouse_y)
+        button_color = (0, 200, 0) if hover else (255, 0, 0)
+        pygame.draw.rect(self.screen, button_color, self.settings_button_rect)
+        button_text = self.font.render('Settings', True, (255, 255, 255))
+        text_rect = button_text.get_rect(center=self.settings_button_rect.center)
         self.screen.blit(button_text, text_rect)
 
     def display_quit_game_button(self, mouse_x, mouse_y):
@@ -126,12 +139,14 @@ class Game:
         pygame.mouse.set_visible(0)
 
         while True:
-            self.screen.blit(self.background_image, (0, 0))
+            self.screen.blit(self.background_img, (0, 0))
             current_ticks = pygame.time.get_ticks()
             mouse_x, mouse_y = pygame.mouse.get_pos()
 
             if not self.game_started:
                 self.display_start_button(mouse_x, mouse_y)
+                self.display_settings_button(mouse_x, mouse_y)
+                self.display_quit_game_button(mouse_x, mouse_y)
 
             else:
                 if self.lives == 0 and not self.game_over:
@@ -155,6 +170,9 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.close_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if self.settings_button_rect.collidepoint(mouse_x, mouse_y):
+                        self.display_settings()
+
                     if self.quit_button_rect.collidepoint(mouse_x, mouse_y):
                         self.close_game()
 
@@ -166,10 +184,14 @@ class Game:
                         if not self.game_started:
                             self.game_started = True
                             self.start_ticks = pygame.time.get_ticks()
+                            self.background_img = self.ig_background_image
 
             pygame.draw.circle(self.screen, (255, 0, 0), (mouse_x, mouse_y), 5)
             pygame.display.flip()
             self.clock.tick(60)
+
+    def display_settings(self):
+        pass
 
 
 class Fruit:
