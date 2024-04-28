@@ -7,7 +7,7 @@ import random
 class Game:
     def __init__(self):
         pygame.init()
-        pygame.display.set_caption("Fruit Ninja")
+        pygame.display.set_caption("Fruit Nija")
         self.screen = pygame.display.set_mode((1400, 800))
         self.clock = pygame.time.Clock()
         self.fruits = []
