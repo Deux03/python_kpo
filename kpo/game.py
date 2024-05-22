@@ -37,8 +37,8 @@ class Game:
         except FileNotFoundError:
             print("Font file 'fonts/comic.ttf' not found, using default font.")
             self.font = pygame.font.Font(None, 30)
-        self.ig_background_image = self.load_and_scale_image('background/background.jpg', (1400, 800))
-        self.start_bg_img = self.load_and_scale_image('background/WelcomeScreen.jpg', (1400, 800))
+        self.ig_background_image = self.load_and_scale_image('background/background.jpg', self.current_resolution)
+        self.start_bg_img = self.load_and_scale_image('background/WelcomeScreen.jpg', self.current_resolution)
         self.background_img = self.start_bg_img
 
     def load_and_scale_image(self, filepath, size):
@@ -66,7 +66,7 @@ class Game:
 
     def display_pause(self):
         pause_text = self.font.render(f'P - pause', True, (255, 255, 255))
-        self.screen.blit(pause_text, (1250, 10))
+        self.screen.blit(pause_text, (self.current_resolution[0] - 150, 10))
 
     def display_timer(self, current_time, start_time, dest_x=10, dest_y=10, color=(255, 255, 255)):
         elapsed_time = (current_time - start_time) / 1000
@@ -95,7 +95,10 @@ class Game:
 
     def display_button(self, mouse_x, mouse_y, btn_rect, text):
         hover = btn_rect.collidepoint(mouse_x, mouse_y)
-        button_color = (0, 200, 0) if hover else (255, 0, 0)
+        if hover:
+            button_color = (0, 200, 0)
+        else:
+            button_color = (255, 0, 0)
         pygame.draw.rect(self.screen, button_color, btn_rect)
         button_text = self.font.render(text, True, (255, 255, 255))
         text_rect = button_text.get_rect(center=btn_rect.center)
@@ -160,24 +163,23 @@ class Game:
                     self.spawn_random_fruits()
                 else:
                     self.display_game_over()
-                    self.display_button(mouse_x, mouse_y, self.buttons_rects['restart_button_rect'], "RESTART")
+                    self.display_button(mouse_x, mouse_y, self.buttons_rects['restart_button_rect'], "MENU")
                     self.display_button(mouse_x, mouse_y, self.buttons_rects['quit_button_rect'], "QUIT")
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.close_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if self.buttons_rects['settings_button_rect'].collidepoint(mouse_x, mouse_y):
+                    if self.buttons_rects['restart_button_rect'].collidepoint(mouse_x, mouse_y):
+                        self.reset_game()
+
+                    elif self.buttons_rects['settings_button_rect'].collidepoint(mouse_x, mouse_y):
                         self.display_settings()
 
-                    if self.buttons_rects['quit_button_rect'].collidepoint(mouse_x, mouse_y):
+                    elif self.buttons_rects['quit_button_rect'].collidepoint(mouse_x, mouse_y):
                         self.close_game()
 
-                    if self.buttons_rects['restart_button_rect'].collidepoint(mouse_x, mouse_y):
-                        if self.game_over:
-                            self.reset_game()
-
-                    if self.buttons_rects['start_button_rect'].collidepoint(mouse_x, mouse_y):
+                    elif self.buttons_rects['start_button_rect'].collidepoint(mouse_x, mouse_y):
                         if not self.game_started:
                             self.game_started = True
                             self.start_ticks = pygame.time.get_ticks()
@@ -200,7 +202,8 @@ class Game:
             self.screen.blit(self.background_img, (0, 0))
             mouse_x, mouse_y = pygame.mouse.get_pos()
             pause_text = self.font.render("Game paused, press 'P' to unpause", True, (255, 255, 255))
-            self.screen.blit(pause_text, (430, 300))
+            self.screen.blit(pause_text, (self.current_resolution[0] // 2 - self.current_resolution[0] // 5, self.current_resolution[1] // 2 - 100))
+            self.display_button(mouse_x, mouse_y, self.buttons_rects['restart_button_rect'], "MENU")
             self.display_button(mouse_x, mouse_y, self.buttons_rects['quit_button_rect'], "QUIT")
 
             for event in pygame.event.get():
@@ -211,7 +214,11 @@ class Game:
                     if event.key == pygame.K_p:
                         paused = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if self.buttons_rects['quit_button_rect'].collidepoint(mouse_x, mouse_y):
+                    if self.buttons_rects['restart_button_rect'].collidepoint(mouse_x, mouse_y):
+                        self.reset_game()
+                        paused = False
+
+                    elif self.buttons_rects['quit_button_rect'].collidepoint(mouse_x, mouse_y):
                         self.close_game()
 
             pygame.draw.circle(self.screen, (255, 0, 0), (mouse_x, mouse_y), 5)
