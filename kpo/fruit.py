@@ -11,10 +11,17 @@ class Fruit:
         self._x_pos = random.randint(100, resolution[0] - 100)
         self._y_pos = resolution[1]
         self.speed = speed
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        img_path = os.path.join(base_dir, 'fruits', name + '.png')
+
         if name not in Fruit.images:
-            img_path = os.path.join('fruits', name + '.png')
-            img = pygame.image.load(img_path).convert_alpha()
-            Fruit.images[name] = pygame.transform.scale(img, (100, 100))
+            try:
+                img = pygame.image.load(img_path).convert_alpha()
+                Fruit.images[name] = pygame.transform.scale(img, (100, 100))
+            except FileNotFoundError:
+                print(f"Error: Image file '{img_path}' not found.")
+                Fruit.images[name] = pygame.Surface((100, 100))
+
         self.img = Fruit.images[name]
         self.img_pos = [self._x_pos, self._y_pos]
 

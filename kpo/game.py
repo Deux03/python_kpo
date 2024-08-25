@@ -1,9 +1,14 @@
+import json
+import os
+
 import pygame
 import sys
-import os
 import random
 
 from kpo.fruit import Fruit
+
+
+
 
 
 class Game:
@@ -14,6 +19,7 @@ class Game:
         self.start_bg_img = None
         self.ig_background_image = None
         pygame.init()
+        pygame.mixer.init()
         pygame.display.set_caption("Fruit Ninja")
         self.current_resolution = (res_x, res_y)
         self.screen = pygame.display.set_mode(self.current_resolution)
@@ -32,20 +38,47 @@ class Game:
         self.pause_start_ticks = 0
         self.total_pause_duration = 0
         self.state = "menu"
-        self.font = self.load_font('fonts/comic.ttf', 30)
-        self.load_images()
+
+        self.base_dir = os.path.dirname(os.path.abspath(__file__))
+        font_path = os.path.join(self.base_dir, 'fonts', 'comic.ttf')
+        slash_sound_path = os.path.join(self.base_dir, 'sounds', 'slash.mp3')
+        losing_life_sound_path = os.path.join(self.base_dir, 'sounds', 'losing_life.mp3')
+
+        self.font = self.load_font(font_path, 30)
+        self.load_images(self.base_dir)
         self.calculate_button_positions()
+        self.best_scores = {}
+        self.load_best_scores()
+        self.blink_active = False
+        self.blink_start_time = 0
+        self.blink_duration = 200
+        self.slash_sound = self.load_sound(slash_sound_path)
+        if self.slash_sound:
+            self.slash_sound.set_volume(0.25)
+        self.losing_life_sound = self.load_sound(losing_life_sound_path)
+        if self.losing_life_sound:
+            self.losing_life_sound.set_volume(0.4)
+        self.end_scr_txt = "YOU LOST"
+        self.record_scr_id = 1
+
 
     def load_font(self, font_path, size):
         try:
             return pygame.font.Font(font_path, size)
         except FileNotFoundError:
-            print(f"Font file '{font_path}' not found, using default font.")
             return pygame.font.Font(None, size)
 
-    def load_images(self):
-        self.ig_background_image = self.load_and_scale_image('background/background.jpg', self.current_resolution)
-        self.start_bg_img = self.load_and_scale_image('background/WelcomeScreen.jpg', self.current_resolution)
+    def load_sound(self, sound_path):
+        try:
+            return pygame.mixer.Sound(sound_path)
+        except FileNotFoundError:
+            return None
+
+    def load_images(self, base_dir):
+        background_path = os.path.join(base_dir, 'background', 'background.jpg')
+        welcome_screen_path = os.path.join(base_dir, 'background', 'WelcomeScreen.jpg')
+        self.ig_background_image = self.load_and_scale_image(background_path, self.current_resolution)
+        self.start_bg_img = self.load_and_scale_image(welcome_screen_path, self.current_resolution)
         self.background_img = self.start_bg_img
 
     def load_and_scale_image(self, filepath, size):
@@ -53,7 +86,6 @@ class Game:
             image = pygame.image.load(filepath).convert()
             return pygame.transform.scale(image, size)
         except FileNotFoundError:
-            print(f"Error loading image {filepath}, using a black background instead.")
             return pygame.Surface(size)
 
     def calculate_button_positions(self):
@@ -107,12 +139,16 @@ class Game:
 
     def display_game_over(self, mouse_x, mouse_y):
         self.screen.blit(self.background_img, (0, 0))
-        u_lost_text = self.font.render(f'YOU LOST!', True, (255, 0, 0))
+
+        self.display_best_scores()
+
+        u_lost_text = self.font.render(self.end_scr_txt, True, (255, 0, 0))
         self.screen.blit(u_lost_text, (self.current_resolution[0] // 2 - 100, self.current_resolution[1] // 2 - 100))
         total_score = self.font.render(f'Total score: {self.score}', True, (255, 0, 0))
         self.screen.blit(total_score, (self.current_resolution[0] // 2 - 100, self.current_resolution[1] // 2 - 50))
         timer_text = self.font.render(f'Time: {self.end_time:.2f}s', True, (255, 0, 0))
         self.screen.blit(timer_text, (self.current_resolution[0] // 2 - 100, self.current_resolution[1] // 2))
+
         self.display_button(mouse_x, mouse_y, self.buttons_rects['restart_button_rect'], "MENU")
         self.display_button(mouse_x, mouse_y, self.buttons_rects['quit_button_rect'], "QUIT")
 
@@ -139,12 +175,19 @@ class Game:
             if fruit_rect.collidepoint(mouse_x, mouse_y):
                 self.fruits.remove(fruit)
                 self.score += 1
+                if self.slash_sound:
+                    self.slash_sound.play()
                 continue
 
             self.screen.blit(fruit.img, fruit.img_pos)
             if fruit.y_pos < -100:
                 self.fruits.remove(fruit)
                 self.lives -= 1
+                if self.losing_life_sound:
+                    self.losing_life_sound.play()
+                # Activate the blink effect when a life is lost
+                self.blink_active = True
+                self.blink_start_time = pygame.time.get_ticks()
 
     def spawn_random_fruits(self):
         if random.randint(0, 40) == 0:
@@ -171,6 +214,11 @@ class Game:
                 if self.lives <= 0 and not self.game_over:
                     self.game_over = True
                     self.end_time = (current_ticks - self.start_ticks - self.total_pause_duration) / 1000
+                    if self.update_best_scores():
+                        self.save_new_best_scores()
+                        self.end_scr_txt = f"{self.record_scr_id}. NEW RECORD SCORE: "
+                    else:
+                        self.end_scr_txt = "YOU LOST"
 
                 if not self.game_over:
                     self.speed_increaser(current_ticks)
@@ -181,6 +229,7 @@ class Game:
                     self.display_pause()
                     self.fruits_movement(mouse_x, mouse_y)
                     self.spawn_random_fruits()
+                    self.activate_blink_if_lost_life(current_ticks)
                 else:
                     self.display_game_over(mouse_x, mouse_y)
             elif self.state == "settings":
@@ -246,11 +295,102 @@ class Game:
         self.current_resolution = (int(res[0]), int(res[1]))
         self.screen = pygame.display.set_mode(self.current_resolution)
         self.calculate_button_positions()
-        self.load_images()
+        self.load_images(self.base_dir)
 
-def test_game():
+    def load_best_scores(self):
+        try:
+            with open('best_scores.json', 'r') as file:
+                self.best_scores = json.load(file)
+
+
+        except FileNotFoundError:
+            scores = {
+                        "1": [0, 0],
+                        "2": [0, 0],
+                        "3": [0, 0],
+                        "4": [0, 0],
+                        "5": [0, 0]
+                    }
+            with open('best_scores.json', 'w') as file:
+                json.dump(scores, file, indent=4)
+                self.best_scores = scores
+
+    def update_best_scores(self):
+        """
+        Updates the list of best scores by inserting the current score into the appropriate position, if applicable.
+
+        This method checks if the current game score (`self.score`) and time (`self.end_time`) qualify to be included
+        in the list of best scores. If the current score is higher than any of the existing best scores, or if it matches
+        an existing score but was achieved in a shorter time, it will be inserted into the best scores list. The lower
+        scores will be shifted down one rank, and the lowest score will be removed if necessary to maintain only the top 5 scores.
+
+        The `best_scores` attribute is updated, where each entry represents a rank and contains a list with two elements:
+        the score and the time taken to achieve that score.
+
+        Returns:
+            bool: True if the best scores were updated, False otherwise.
+
+        Example:
+            If the current score is 300 and this score is higher than the 3rd best score (or is the same but achieved in less time),
+            then this method will insert the current score into the 3rd position and shift the existing 3rd to 5th scores down one rank.
+        """
+        update_happened = False
+        current_score = self.score
+        current_time = self.end_time
+
+        # Convert the best_scores dictionary to a list of tuples for easier manipulation
+        best_scores_list = [(key, int(value[0]), float(value[1])) for key, value in self.best_scores.items()]
+
+        # Sort the list based on the scores, highest score first. If scores are the same, sort by time (ascending).
+        best_scores_list.sort(key=lambda x: (-x[1], x[2]))
+
+        for i, (key, best_score, best_time) in enumerate(best_scores_list):
+            if current_score > best_score or (current_score == best_score and current_time < best_time):
+                self.record_scr_id = key
+                # Shift lower scores down
+                for j in range(len(best_scores_list) - 1, i, -1):
+                    best_scores_list[j] = best_scores_list[j - 1]
+
+                # Insert the new score
+                best_scores_list[i] = (key, current_score, current_time)
+                update_happened = True
+                break
+
+        if update_happened:
+            # Convert back to the original dictionary format
+            for i, (key, score, time) in enumerate(best_scores_list):
+                self.best_scores[str(i + 1)] = [score, time]
+
+        return update_happened
+
+    def save_new_best_scores(self):
+        with open('best_scores.json', 'w') as file:
+            json.dump(self.best_scores, file, indent=4)
+
+    def display_best_scores(self):
+        title_text = self.font.render('Best Scores:', True, (255, 255, 0))
+        start_y = self.current_resolution[1] // 2 - 300
+        self.screen.blit(title_text, (self.current_resolution[0] // 2 - 100, start_y))
+
+        for i, (rank, (score, time)) in enumerate(sorted(self.best_scores.items(), key=lambda x: int(x[0]))):
+            score_text = self.font.render(f'{rank}: Score: {score}, Time: {time:.2f}s', True, (255, 255, 255))
+            self.screen.blit(score_text, (self.current_resolution[0] // 2 - 100, start_y + 30 + i * 30))
+
+    def activate_blink_if_lost_life(self, current_ticks):
+        if self.blink_active:
+            if current_ticks - self.blink_start_time <= self.blink_duration:
+                red_overlay = pygame.Surface(self.current_resolution)
+                red_overlay.set_alpha(128)
+                red_overlay.fill((255, 0, 0))
+                self.screen.blit(red_overlay, (0, 0))
+            else:
+                self.blink_active = False
+
+
+
+def main():
     game = Game()
     game.run_game()
 
-
-test_game()
+if __name__ == "__main__":
+    main()
