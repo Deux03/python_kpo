@@ -8,11 +8,19 @@ import random
 from kpo.fruit import Fruit
 
 
-
-
-
 class Game:
     def __init__(self, res_x=1400, res_y=800):
+        """
+        Initialize the game with the given resolution.
+
+        This method sets up the initial state of the game, including screen resolution, assets loading,
+        and initializing Pygame modules.
+
+        :param res_x: The width of the game window. Default is 1400.
+        :type res_x: int
+        :param res_y: The height of the game window. Default is 800.
+        :type res_y: int
+        """
         self.setting_buttons_rects = None
         self.buttons_rects = None
         self.background_img = None
@@ -61,20 +69,46 @@ class Game:
         self.end_scr_txt = "YOU LOST"
         self.record_scr_id = 1
 
-
     def load_font(self, font_path, size):
+        """
+               Load a font from the specified path and size.
+
+               :param font_path: The path to the font file.
+               :type font_path: str
+               :param size: The size of the font to load.
+               :type size: int
+               :return: A Pygame font object. If the specified font cannot be loaded, returns a default font.
+               :rtype: pygame.font.Font
+        """
         try:
             return pygame.font.Font(font_path, size)
         except FileNotFoundError:
             return pygame.font.Font(None, size)
 
     def load_sound(self, sound_path):
+        """
+        Load a sound effect from the specified path.
+
+        :param sound_path: The path to the sound file.
+        :type sound_path: str
+        :return: A Pygame Sound object if the file is found; otherwise, None.
+        :rtype: pygame.mixer.Sound or None
+        """
         try:
             return pygame.mixer.Sound(sound_path)
         except FileNotFoundError:
             return None
 
     def load_images(self, base_dir):
+        """
+        Load background images and scale them to fit the game window.
+
+        This method loads the images for the game background and the welcome screen,
+        and scales them to the current screen resolution.
+
+        :param base_dir: The base directory where the images are located.
+        :type base_dir: str
+        """
         background_path = os.path.join(base_dir, 'background', 'background.jpg')
         welcome_screen_path = os.path.join(base_dir, 'background', 'WelcomeScreen.jpg')
         self.ig_background_image = self.load_and_scale_image(background_path, self.current_resolution)
@@ -82,6 +116,16 @@ class Game:
         self.background_img = self.start_bg_img
 
     def load_and_scale_image(self, filepath, size):
+        """
+               Load an image from a file and scale it to the specified size.
+
+               :param filepath: The path to the image file.
+               :type filepath: str
+               :param size: The size to scale the image to (width, height).
+               :type size: tuple
+               :return: A Pygame Surface object containing the scaled image. If the file is not found, returns a blank Surface.
+               :rtype: pygame.Surface
+               """
         try:
             image = pygame.image.load(filepath).convert()
             return pygame.transform.scale(image, size)
@@ -89,6 +133,11 @@ class Game:
             return pygame.Surface(size)
 
     def calculate_button_positions(self):
+        """
+                Calculate the positions of the menu and settings buttons based on the current resolution.
+
+                This method sets up the button rectangles for the game menu, restart, quit, and settings.
+                """
         mid_x = self.current_resolution[0] // 2
         mid_y = self.current_resolution[1] // 2
         self.buttons_rects = {
@@ -105,6 +154,11 @@ class Game:
         }
 
     def reset_game(self):
+        """
+                Reset the game state to its initial settings.
+
+                This method resets scores, lives, speed, and game state, effectively restarting the game.
+                """
         self.last_speed_increase_time = pygame.time.get_ticks()
         self.fruit_speed = -1
         self.score = 0
@@ -117,27 +171,63 @@ class Game:
         self.total_pause_duration = 0
 
     def display_pause(self):
+        """
+                Display a pause message on the screen.
+
+                This method renders and displays a text message indicating the game is paused.
+                """
         pause_text = self.font.render(f'P - pause', True, (255, 255, 255))
         self.screen.blit(pause_text, (self.current_resolution[0] - 150, 10))
 
     def display_timer(self, current_time, start_time, dest_x=10, dest_y=10, color=(255, 255, 255)):
+        """
+                Display the elapsed game time on the screen.
+
+                :param current_time: The current time in milliseconds.
+                :type current_time: int
+                :param start_time: The game start time in milliseconds.
+                :type start_time: int
+                :param dest_x: The x-coordinate on the screen to display the timer. Default is 10.
+                :type dest_x: int
+                :param dest_y: The y-coordinate on the screen to display the timer. Default is 10.
+                :type dest_y: int
+                :param color: The color of the timer text. Default is white (255, 255, 255).
+                :type color: tuple
+                """
         elapsed_time = (current_time - start_time - self.total_pause_duration) / 1000
         timer_text = self.font.render(f'Time: {elapsed_time:.2f}s', True, color)
         self.screen.blit(timer_text, (dest_x, dest_y))
 
     def display_score(self):
+        """
+               Display the current score on the screen.
+               """
         score_text = self.font.render(f'Score: {self.score}', True, (255, 255, 255))
         self.screen.blit(score_text, (10, 50))
 
     def display_lives(self):
+        """
+                Display the number of remaining lives on the screen.
+                """
         lives_text = self.font.render(f'Lives: {self.lives}', True, (255, 255, 255))
         self.screen.blit(lives_text, (10, 90))
 
     def display_fps(self):
+        """
+                Display the current frames per second (FPS) on the screen.
+                """
         fps_text = self.font.render(f'FPS: {self.clock.get_fps():.0f}', True, (255, 255, 255))
         self.screen.blit(fps_text, (10, 130))
 
     def display_game_over(self, mouse_x, mouse_y):
+        """
+                Display the game over screen and options for restarting or quitting.
+
+                :param mouse_x: The x-coordinate of the mouse position.
+                :type mouse_x: int
+                :param mouse_y: The y-coordinate of the mouse position.
+                :type mouse_y: int
+                """
         self.screen.blit(self.background_img, (0, 0))
 
         self.display_best_scores()
@@ -153,6 +243,18 @@ class Game:
         self.display_button(mouse_x, mouse_y, self.buttons_rects['quit_button_rect'], "QUIT")
 
     def display_button(self, mouse_x, mouse_y, btn_rect, text):
+        """
+                Display a button with hover effects and text.
+
+                :param mouse_x: The x-coordinate of the mouse position.
+                :type mouse_x: int
+                :param mouse_y: The y-coordinate of the mouse position.
+                :type mouse_y: int
+                :param btn_rect: The rectangle defining the button's position and size.
+                :type btn_rect: pygame.Rect
+                :param text: The text to display on the button.
+                :type text: str
+                """
         hover = btn_rect.collidepoint(mouse_x, mouse_y)
         button_color = (0, 200, 0) if hover else (255, 0, 0)
         pygame.draw.rect(self.screen, button_color, btn_rect)
@@ -161,11 +263,30 @@ class Game:
         self.screen.blit(button_text, text_rect)
 
     def speed_increaser(self, current_time):
+        """
+                Increase the speed of falling fruits over time.
+
+                This method checks if enough time has passed to increase the fruit falling speed.
+
+                :param current_time: The current time in milliseconds.
+                :type current_time: int
+                """
         if current_time - self.last_speed_increase_time > self.speed_increase_interval:
             self.fruit_speed -= 1.05
             self.last_speed_increase_time = current_time
 
     def fruits_movement(self, mouse_x, mouse_y):
+        """
+               Handle the movement of fruits and detect interactions with the mouse.
+
+               This method moves fruits downward, checks for collisions with the mouse cursor (slicing),
+               and removes fruits that fall off the screen.
+
+               :param mouse_x: The x-coordinate of the mouse position.
+               :type mouse_x: int
+               :param mouse_y: The y-coordinate of the mouse position.
+               :type mouse_y: int
+               """
         for fruit in self.fruits[:]:
             fruit.y_pos += self.fruit_speed
             fruit.img_pos = [fruit.x_pos, fruit.y_pos]
@@ -190,15 +311,29 @@ class Game:
                 self.blink_start_time = pygame.time.get_ticks()
 
     def spawn_random_fruits(self):
+        """
+                Spawn random fruits at random positions.
+
+                This method randomly decides when to spawn a fruit and adds it to the game.
+                """
         if random.randint(0, 40) == 0:
             fruit_type = random.choice(self.fruit_types)
             self.fruits.append(Fruit(fruit_type, self.fruit_speed, self.current_resolution))
 
     def close_game(self):
+        """
+                Close the game and exit the program.
+                """
         pygame.quit()
         sys.exit()
 
     def run_game(self):
+        """
+                Run the main game loop.
+
+                This method contains the main game loop that handles game states, user input,
+                and updates the game screen.
+                """
         pygame.mouse.set_visible(0)
 
         while True:
@@ -292,12 +427,23 @@ class Game:
             self.clock.tick(60)
 
     def update_resolution(self, res):
+        """
+               Update the game resolution and adjust related elements.
+
+               :param res: A tuple containing the new resolution (width, height).
+               :type res: tuple
+               """
         self.current_resolution = (int(res[0]), int(res[1]))
         self.screen = pygame.display.set_mode(self.current_resolution)
         self.calculate_button_positions()
         self.load_images(self.base_dir)
 
     def load_best_scores(self):
+        """
+                Load the best scores from a JSON file.
+
+                If the file is not found, it initializes the best scores with default values.
+                """
         try:
             with open('best_scores.json', 'r') as file:
                 self.best_scores = json.load(file)
@@ -305,12 +451,12 @@ class Game:
 
         except FileNotFoundError:
             scores = {
-                        "1": [0, 0],
-                        "2": [0, 0],
-                        "3": [0, 0],
-                        "4": [0, 0],
-                        "5": [0, 0]
-                    }
+                "1": [0, 0],
+                "2": [0, 0],
+                "3": [0, 0],
+                "4": [0, 0],
+                "5": [0, 0]
+            }
             with open('best_scores.json', 'w') as file:
                 json.dump(scores, file, indent=4)
                 self.best_scores = scores
@@ -327,12 +473,12 @@ class Game:
         The `best_scores` attribute is updated, where each entry represents a rank and contains a list with two elements:
         the score and the time taken to achieve that score.
 
-        Returns:
-            bool: True if the best scores were updated, False otherwise.
-
         Example:
             If the current score is 300 and this score is higher than the 3rd best score (or is the same but achieved in less time),
             then this method will insert the current score into the 3rd position and shift the existing 3rd to 5th scores down one rank.
+
+        :return: True if the best scores were updated, False otherwise.
+        :rtype: bool
         """
         update_happened = False
         current_score = self.score
@@ -364,10 +510,16 @@ class Game:
         return update_happened
 
     def save_new_best_scores(self):
+        """
+        The method saves the current best scores into the 'best_scores.json' file.
+        """
         with open('best_scores.json', 'w') as file:
             json.dump(self.best_scores, file, indent=4)
 
     def display_best_scores(self):
+        """
+                Display the list of best scores on the screen.
+                """
         title_text = self.font.render('Best Scores:', True, (255, 255, 0))
         start_y = self.current_resolution[1] // 2 - 300
         self.screen.blit(title_text, (self.current_resolution[0] // 2 - 100, start_y))
@@ -377,6 +529,12 @@ class Game:
             self.screen.blit(score_text, (self.current_resolution[0] // 2 - 100, start_y + 30 + i * 30))
 
     def activate_blink_if_lost_life(self, current_ticks):
+        """
+                Activate a red blink effect on the screen when a life is lost.
+
+                :param current_ticks: The current time in milliseconds.
+                :type current_ticks: int
+                """
         if self.blink_active:
             if current_ticks - self.blink_start_time <= self.blink_duration:
                 red_overlay = pygame.Surface(self.current_resolution)
@@ -387,10 +545,10 @@ class Game:
                 self.blink_active = False
 
 
-
 def main():
     game = Game()
     game.run_game()
+
 
 if __name__ == "__main__":
     main()
